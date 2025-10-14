@@ -11,11 +11,20 @@ import (
 )
 
 func main() {
+	repo, err := GetRepo()
+	if err != nil {
+		printError(err)
+	}
+
+	branches, err := GetBranchesIter(repo)
+	if err != nil {
+		printError(err)
+	}
+
 	app := tview.NewApplication()
 	list := tview.NewList().ShowSecondaryText(false)
 	list.SetChangedFunc(ListItemChanged)
 	list.SetSelectedFunc(ListItemSelected)
-	branches := GetBranchesIter()
 
 	index := 1
 	branches.ForEach(func(branch *plumbing.Reference) error {
@@ -33,23 +42,27 @@ func ListItemChanged(index int, mainText string, secondaryText string, shortCut 
 
 func ListItemSelected(index int, mainText string, secondaryText string, shortCut rune) {}
 
-func GetBranchesIter() storer.ReferenceIter {
+func GetRepo() (*git.Repository, error) {
 	currentPath, err := os.Getwd()
 	if err != nil {
-		printError(err)
+		return nil, err
 	}
 
 	repo, err := git.PlainOpen(currentPath)
 	if err != nil {
-		printError(err)
+		return nil, err
 	}
 
+	return repo, nil
+}
+
+func GetBranchesIter(repo *git.Repository) (storer.ReferenceIter, error) {
 	branches, err := repo.Branches()
 	if err != nil {
-		printError(err)
+		return nil, err
 	}
 
-	return branches
+	return branches, nil
 }
 
 func printError(err error) {
