@@ -52,6 +52,14 @@ func main() {
 		app.Stop()
 	})
 
+	index := 1
+	branches.ForEach(func(branch *plumbing.Reference) error {
+		list.AddItem(branch.Name().Short(), "", rune(index), nil)
+		branchesMap[branch.Name().Short()] = branch
+		index++
+		return nil
+	})
+
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEscape || event.Rune() == 'q' {
 			app.Stop()
@@ -59,12 +67,22 @@ func main() {
 		return event
 	})
 
-	index := 1
-	branches.ForEach(func(branch *plumbing.Reference) error {
-		list.AddItem(branch.Name().Short(), "", rune(index), nil)
-		branchesMap[branch.Name().Short()] = branch
-		index++
-		return nil
+	list.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		currentIndex := list.GetCurrentItem()
+
+		if event.Rune() == 'j' {
+			if currentIndex < index {
+				list.SetCurrentItem(currentIndex + 1)
+			}
+		}
+
+		if event.Rune() == 'k' {
+			if currentIndex > 0 {
+				list.SetCurrentItem(currentIndex - 1)
+			}
+		}
+
+		return event
 	})
 
 	if err := app.SetRoot(list, true).Run(); err != nil {
