@@ -21,14 +21,36 @@ func main() {
 		printError(err)
 	}
 
+	worktree, err := repo.Worktree()
+	if err != nil {
+		printError(err)
+	}
+
+	branchesMap := make(map[string]*plumbing.Reference)
 	app := tview.NewApplication()
 	list := tview.NewList().ShowSecondaryText(false)
-	list.SetChangedFunc(ListItemChanged)
-	list.SetSelectedFunc(ListItemSelected)
+	list.SetSelectedFunc(func(index int, mainText string, secondaryText string, shortCut rune) {
+		selectedBranch, exists := branchesMap[mainText]
+		if !exists {
+			return
+		}
+
+		checkoutOpts := git.CheckoutOptions{
+			Hash:                      plumbing.ZeroHash,
+			Branch:                    selectedBranch.Name(),
+			Create:                    false,
+			Force:                     false,
+			Keep:                      true,
+			SparseCheckoutDirectories: make([]string, 0),
+		}
+		worktree.Checkout(&checkoutOpts)
+		app.Stop()
+	})
 
 	index := 1
 	branches.ForEach(func(branch *plumbing.Reference) error {
 		list.AddItem(branch.Name().Short(), "", rune(index), nil)
+		branchesMap[branch.Name().Short()] = branch
 		index++
 		return nil
 	})
@@ -37,10 +59,6 @@ func main() {
 		printError(err)
 	}
 }
-
-func ListItemChanged(index int, mainText string, secondaryText string, shortCut rune) {}
-
-func ListItemSelected(index int, mainText string, secondaryText string, shortCut rune) {}
 
 func GetRepo() (*git.Repository, error) {
 	currentPath, err := os.Getwd()
