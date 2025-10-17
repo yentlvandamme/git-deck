@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/gdamore/tcell/v2"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/storer"
@@ -49,6 +50,13 @@ func main() {
 		}
 
 		app.Stop()
+	})
+
+	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEscape || event.Rune() == 'q' {
+			app.Stop()
+		}
+		return event
 	})
 
 	index := 1
