@@ -43,7 +43,11 @@ func main() {
 			Keep:                      true,
 			SparseCheckoutDirectories: make([]string, 0),
 		}
-		worktree.Checkout(&checkoutOpts)
+		err := worktree.Checkout(&checkoutOpts)
+		if err != nil {
+			printError(err)
+		}
+
 		app.Stop()
 	})
 
