@@ -52,10 +52,24 @@ func main() {
 		app.Stop()
 	})
 
+	currentBranch, err := repo.Head()
+	if err != nil {
+		printError(err)
+	}
+	currentBranchName := currentBranch.Name().Short()
+
 	index := 1
 	branches.ForEach(func(branch *plumbing.Reference) error {
-		list.AddItem(branch.Name().Short(), "", rune(index), nil)
-		branchesMap[branch.Name().Short()] = branch
+		var displayBranchName string
+		branchNameShort := branch.Name().Short()
+		if currentBranchName == branchNameShort {
+			displayBranchName = "* " + branchNameShort
+		} else {
+			displayBranchName = branchNameShort
+		}
+
+		list.AddItem(displayBranchName, "", rune(index), nil)
+		branchesMap[branchNameShort] = branch
 		index++
 		return nil
 	})
