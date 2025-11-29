@@ -7,7 +7,6 @@ import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/go-git/go-git/v5/plumbing/storer"
 	"github.com/rivo/tview"
 )
 
@@ -17,19 +16,28 @@ func main() {
 		printError(err)
 	}
 
-	branches, err := GetBranchesIter(repo)
-	if err != nil {
-		printError(err)
-	}
-
 	worktree, err := repo.Worktree()
 	if err != nil {
 		printError(err)
 	}
 
-	branchesMap := make(map[string]*plumbing.Reference)
+	// Create the application and its list component
 	app := tview.NewApplication()
 	list := tview.NewList().ShowSecondaryText(false)
+
+	branchesMap, err := GetBranchesMap(repo)
+	if err != nil {
+		printError(err)
+	}
+
+	index := 1
+	for _, val := range branchesMap {
+		list.AddItem(val.DisplayName, "", rune(index), nil)
+		index++
+
+	}
+
+	// Select handler
 	list.SetSelectedFunc(func(index int, mainText string, secondaryText string, shortCut rune) {
 		selectedBranch, exists := branchesMap[mainText]
 		if !exists {
@@ -38,40 +46,19 @@ func main() {
 
 		checkoutOpts := git.CheckoutOptions{
 			Hash:                      plumbing.ZeroHash,
-			Branch:                    selectedBranch.Name(),
+			Branch:                    selectedBranch.Branch.Name(),
 			Create:                    false,
 			Force:                     false,
 			Keep:                      true,
 			SparseCheckoutDirectories: make([]string, 0),
 		}
+
 		err := worktree.Checkout(&checkoutOpts)
 		if err != nil {
 			printError(err)
 		}
 
 		app.Stop()
-	})
-
-	currentBranch, err := repo.Head()
-	if err != nil {
-		printError(err)
-	}
-	currentBranchName := currentBranch.Name().Short()
-
-	index := 1
-	branches.ForEach(func(branch *plumbing.Reference) error {
-		var displayBranchName string
-		branchNameShort := branch.Name().Short()
-		if currentBranchName == branchNameShort {
-			displayBranchName = "* " + branchNameShort
-		} else {
-			displayBranchName = branchNameShort
-		}
-
-		list.AddItem(displayBranchName, "", rune(index), nil)
-		branchesMap[branchNameShort] = branch
-		index++
-		return nil
 	})
 
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
@@ -102,29 +89,6 @@ func main() {
 	if err := app.SetRoot(list, true).Run(); err != nil {
 		printError(err)
 	}
-}
-
-func GetRepo() (*git.Repository, error) {
-	currentPath, err := os.Getwd()
-	if err != nil {
-		return nil, err
-	}
-
-	repo, err := git.PlainOpen(currentPath)
-	if err != nil {
-		return nil, err
-	}
-
-	return repo, nil
-}
-
-func GetBranchesIter(repo *git.Repository) (storer.ReferenceIter, error) {
-	branches, err := repo.Branches()
-	if err != nil {
-		return nil, err
-	}
-
-	return branches, nil
 }
 
 func printError(err error) {
