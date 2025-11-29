@@ -14,27 +14,46 @@ type ListView struct {
 	Worktree *git.Worktree
 }
 
-func NewListView(app *tview.Application, branches map[string]Branch, worktree *git.Worktree) *ListView {
-	list := tview.NewList()
+func NewListView(app *tview.Application) (*ListView, error) {
+	// This is a lot of Git stuff, all depending on the same information (repo).
+	// We might as well just define this Git logic on a struct, so we don't have to pass
+	// data like "repo" around everywhere.
+	repo, err := GetRepo()
+	if err != nil {
+		return nil, err
+	}
+
+	worktree, err := repo.Worktree()
+	if err != nil {
+		return nil, err
+	}
+
+	branchesMap, err := GetBranchesMap(repo)
+	if err != nil {
+		return nil, err
+	}
+
 	listView := ListView{
 		App:      app,
-		List:     list,
-		Branches: branches,
+		List:     tview.NewList(),
+		Branches: branchesMap,
 		Worktree: worktree,
 	}
 
+	listView.SetInitialListBranches()
 	listView.List.ShowSecondaryText(false)
+	listView.List.SetInputCapture(listView.SetListInputCaptures)
+	listView.List.SetSelectedFunc(listView.SetListSelectedHandler)
 
+	return &listView, nil
+}
+
+func (lv *ListView) SetInitialListBranches() {
 	index := 1
-	for _, val := range branches {
-		list.AddItem(val.DisplayName, "", rune(index), nil)
+	for _, val := range lv.Branches {
+		lv.List.AddItem(val.DisplayName, "", rune(index), nil)
 		index++
 	}
-
-	list.SetInputCapture(listView.SetListInputCaptures)
-	list.SetSelectedFunc(listView.SetListSelectedHandler)
-
-	return &listView
 }
 
 func (lv *ListView) SetListInputCaptures(event *tcell.EventKey) *tcell.EventKey {
